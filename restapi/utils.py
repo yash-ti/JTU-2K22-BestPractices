@@ -92,15 +92,15 @@ def transform(logs: List[List[str]]) -> List[List[str]]:
 
         if minutes >= 45:
             if hours == 23:
-                key = "{:02d}:45-00:00".format(hours)
+                key = f"{hours:02}:45-00:00"
             else:
-                key = "{:02d}:45-{:02d}:00".format(hours, hours+1)
+                key = f"{hours:02}:45-{hours + 1:02}:00"
         elif minutes >= 30:
-            key = "{:02d}:30-{:02d}:45".format(hours, hours)
+            key = f"{hours:02}:30-{hours:02}:45"
         elif minutes >= 15:
-            key = "{:02d}:15-{:02d}:30".format(hours, hours)
+            key = f"{hours:02d}:15-{hours:02d}:30"
         else:
-            key = "{:02d}:00-{:02d}:15".format(hours, hours)
+            key = f"{hours:02d}:00-{hours:02d}:15"
 
         result.append([key, text])
         print(key)
