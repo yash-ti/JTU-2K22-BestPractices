@@ -4,6 +4,9 @@ from django.contrib.auth.models import User
 
 from restapi.models import Category, Groups, UserExpense, Expenses
 from typing import Tuple, Dict, List
+from logger import logger
+import time
+
 
 class UserSerializer(ModelSerializer):
     """ Serializer class for a user.
@@ -55,23 +58,29 @@ class ExpensesSerializer(ModelSerializer):
         creates all the users who have this as an expense
         """
         expense_users = validated_data.pop('users')
+        logger.info(f"Creating expense with description: {validated_data['description']}")
+        start_time: float = time.time()
         expense = Expenses.objects.create(**validated_data)
         for eu in expense_users:
             UserExpense.objects.create(expense=expense, **eu)
         return expense
+        logger.info(f"Expense created in {(time.time() - start_time) * 1000} ms")
+
 
     def update(self, instance, validated_data: Dict):
         """ Update the values in instance using validated data.
         If validated_data contains users, all the previous users with
         this expense are deleted and new Users are created.
         """
+        logger.info(f"Updating an expense with description: {instance.description}")
+        start_time: float = time.time()
         user_expenses = validated_data.pop('users')
         instance.description = validated_data['description']
         instance.category = validated_data['category']
         instance.group = validated_data.get('group', None)
         instance.total_amount = validated_data['total_amount']
-
         if user_expenses:
+            logger.debug("Creating new UserExpense objects for the instance")
             instance.users.all().delete()
             UserExpense.objects.bulk_create(
                 [
@@ -80,13 +89,16 @@ class ExpensesSerializer(ModelSerializer):
                 ],
             )
         instance.save()
+        logger.info(f"Instance updated in {(time.time() - start_time) * 1000} ms")
         return instance
 
     def validate(self, attrs: Dict) -> Dict:
         """ Validates the user data, checks if a user does not occur multiple times"""
         # user = self.context['request'].user
+        logger.info("Validating users")
         user_ids: List = [user['user'].id for user in attrs['users']]
         if len(set(user_ids)) != len(user_ids):
+            logger.error("Single user occurs multiple times")
             raise ValidationError('Single user appears multiple times')
 
         # if data.get('group', None) is not None:
@@ -111,7 +123,7 @@ class ExpensesSerializer(ModelSerializer):
         #     amount_lent += user['amount_lent']
         # if amount_lent != amount_owed or amount_lent != total_amount:
         #     raise ValidationError('Given amounts are inconsistent')
-
+        logger.info("User validation successful")
         return attrs
 
     class Meta(object):

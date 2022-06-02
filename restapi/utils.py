@@ -2,9 +2,13 @@ import urllib.request
 from datetime import datetime
 import constants
 from typing import Dict, List, Tuple
+from logger import logging
+import time
 
 def normalize(expense) -> List:
     """Normalize the expenses"""
+    logger.info("Normalizing the expenses")
+    start_time: float = time.time()
     user_balances = expense.users.all()
     dues: Dict = {}
     for user_balance in user_balances:
@@ -24,6 +28,7 @@ def normalize(expense) -> List:
             start += 1
         else:
             end -= 1
+    logger.info(f"Succesfully normalized the expenses in {(time.time() - start_time) * 1000} ms")
     return balances
 
 
@@ -31,15 +36,20 @@ def sort_by_time_stamp(logs: List[str]) -> List[List[str]]:
     """ Sorts logs by their timestamp
         Returns a list of sorted logs.
     """
+    logger.info("Sorting logs by timestamps")
+    start_time: float = time.time()
     data: List[List[str]] = []
     for log in logs:
         data.append(log.split(" "))
     # print(data)
     data = sorted(data, key=lambda elem: elem[1])
+    logger.info(f"Successfully sorted logs by timestamps in {(time.time() - start_time) * 1000} ms")
     return data
 
 def response_format(raw_data: Dict[str, Dict[str, int]]) -> List[Dict]:
     """ Converts the logs into an appropriate format for the response"""
+    start_time: float = time.time()
+    logger.info("Converting logs to response format")
     response: List[Dict] = []
     for timestamp, data in raw_data.items():
         entry: Dict = {'timestamp': timestamp}
@@ -49,21 +59,28 @@ def response_format(raw_data: Dict[str, Dict[str, int]]) -> List[Dict]:
             logs.append({'exception': exception, 'count': count})
         entry['logs'] = logs
         response.append(entry)
+    logger.info(f"Successfully converted logs to response format in {(time.time() - start_time) * 1000} ms")
     return response
 
 def aggregate(cleaned_logs: List[List[str]]) -> Dict[str, Dict[str, int]]:
     """ Aggregates data from the cleaned logs, returns a dict"""
+    start_time: float = time.time()
+    logger.info("Aggregating data from cleaned logs")
     data: Dict[str, Dict[str, int]] = {}
     for log in cleaned_logs:
         [key, text] = log
         value = data.get(key, {})
         value[text] = value.get(text, 0)+1
         data[key] = value
+    logger.info(f"Successfully aggregated data from clean logs in {(time.time() - start_time) * 1000} ms")
+    
     return data
 
 
 def transform(logs: List[List[str]]) -> List[List[str]]:
     """ Transforms logs into [timestamp, text] form"""
+    start_time: float = time.time()
+    logger.info("Transforming logs into [timestamp, text] format")
     result: List[List[str]] = []
     for log in logs:
         [_, timestamp, text] = log
@@ -86,12 +103,13 @@ def transform(logs: List[List[str]]) -> List[List[str]]:
 
         result.append([key, text])
         print(key)
-
+    logger.info(f"Successfully transformed logs in {(time.time() - start_time) * 1000} ms")
     return result
 
 
 def reader(url, timeout: int):
     """ Reads data from a file through HTTP"""
+    logger.info(f"Reading data from {url}")
     with urllib.request.urlopen(url, timeout=timeout) as conn:
         return conn.read()
 
@@ -100,12 +118,15 @@ def multi_threaded_reader(urls, num_threads: int) -> List[str]:
     """
         Read multiple files through HTTP
     """
+    logger.info("Reading data")
+    start_time: float = time.time()
     result: List[str] = []
     for url in urls:
         data = reader(url, constants.URL_TIMEOUT)
         data: str = data.decode('utf-8')
         result.extend(data.split("\n"))
     result: List[str] = sorted(result, key=lambda elem:elem[1])
+    logger.info(f"Successfully read the files in {(time.time() - start_time) * 1000} ms")
     return result
 
 

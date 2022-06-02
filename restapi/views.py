@@ -19,7 +19,8 @@ from restapi.custom_exception import UnauthorizedUserException
 
 from utils import normalize, sort_by_time_stamp, response_format, transform, aggregate, multi_threaded_reader
 from typing import Dict, List
-
+from logging import logger
+import time
 
 def index(_request: Request) -> HttpResponse:
     """ View for the index page"""
@@ -28,7 +29,8 @@ def index(_request: Request) -> HttpResponse:
 
 @api_view(['POST'])
 def logout(request: Request) -> Response:
-    """ Logs out the user"""
+    """ Logs out the user, deletes auth token"""
+    logger.info("Deleting auth token")
     request.user.auth_token.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -37,6 +39,8 @@ def logout(request: Request) -> Response:
 def balance(request) -> Response:
     """ Fetches the balance for the user"""
     user: User = request.user
+    logger.info(f"Fetching balance for user: {user.id}")
+    start_time: float = time.time()
     expenses = Expenses.objects.filter(users__in=user.expenses.all())
     final_balance: dict = {}
     for expense in expenses:
@@ -49,8 +53,8 @@ def balance(request) -> Response:
             if to_user == user.id:
                 final_balance[from_user] = final_balance.get(from_user, 0) + eb['amount']
     final_balance = {k: v for k, v in final_balance.items() if v != 0}
-
     response = [{"user": k, "amount": int(v)} for k, v in final_balance.items()]
+    logger.info(f"Calculated balance for user {user.id} in {(time.time() - start_time) * 1000} ms")
     return Response(response, status=status.HTTP_200_OK)
 
 
@@ -80,9 +84,10 @@ class GroupViewSet(ModelViewSet):
         return groups
 
     def create(self, request, *args, **kwargs):
-        """ Creates a group"""
+        """ Creates a group and adds user to it"""
         user: User = self.request.user
         data: Dict = self.request.data
+        logger.info(f"Creating new group with user {user.id}")
         group = Groups(**data)
         group.save()
         group.members.add(user)
@@ -92,7 +97,9 @@ class GroupViewSet(ModelViewSet):
     @action(methods=['put'], detail=True)
     def members(self, request, pk=None):
         """ Add/remove users from a group"""
+        start_time: float = time.time()
         group = Groups.objects.get(id=pk)
+        logger.info(f"Removing users from group with id {pk}")
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
         body: Dict = request.data
@@ -105,21 +112,27 @@ class GroupViewSet(ModelViewSet):
             for user_id in removed_ids:
                 group.members.remove(user_id)
         group.save()
+        logger.info(f"Successfully removed the requested users from group with id {pk} in {(time.time() - start_time) * 1000} ms")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(methods=['get'], detail=True)
     def expenses(self, _request, pk=None):
         """ Returns the expenses for a group"""
+        start_time: float = time.time()
+        logger.info(f"Finding the expenses for the group with id {pk}")
         group = Groups.objects.get(id=pk)
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
         expenses = group.expenses_set
         serializer = ExpensesSerializer(expenses, many=True)
+        logger.info(f"Successfully found expenses for group with id {pk} in {(time.time() - start_time) * 1000} ms")
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(methods=['get'], detail=True)
     def balances(self, _request, pk=None) -> Response:
         """ Returns the balance of a group"""
+        start_time: float = time.time()
+        logger.info(f"Finding the expenses for the group with id {pk}")
         group = Groups.objects.get(id=pk)
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
@@ -145,7 +158,7 @@ class GroupViewSet(ModelViewSet):
                 start += 1
             else:
                 end -= 1
-
+        logger.info(f"Successfully found balances for group with id {pk} in {(time.time() - start_time) * 1000} ms")
         return Response(balances, status=status.HTTP_200_OK)
 
 
@@ -167,6 +180,8 @@ class ExpensesViewSet(ModelViewSet):
 @permission_classes([])
 def log_processor(request) -> Response:
     """ Processes the logs of the request"""
+    logging.info("Processing logs")
+    start_time: float = time.time()
     data = request.data
     num_threads: int = data['parallelFileProcessingCount']
     log_files = data['logFiles']
@@ -181,5 +196,6 @@ def log_processor(request) -> Response:
     cleaned: List[List[str]] = transform(sorted_logs)
     data: Dict[str, Dict[str, int]] = aggregate(cleaned)
     response: List[Dict] = response_format(data)
+    logger.info(f"Successfully processed in {(time.time() - start_time) * 1000} ms")
     return Response({"response":response}, status=status.HTTP_200_OK)
 
