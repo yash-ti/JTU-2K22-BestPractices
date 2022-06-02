@@ -4,6 +4,7 @@ import constants
 from typing import Dict, List, Tuple
 from logger import logging
 import time
+import concurrent.futures
 
 def normalize(expense) -> List:
     """Normalize the expenses"""
@@ -118,14 +119,16 @@ def multi_threaded_reader(urls, num_threads: int) -> List[str]:
     """
         Read multiple files through HTTP
     """
-    logger.info("Reading data")
+    logger.info("Reading data from multiple files")
     start_time: float = time.time()
     result: List[str] = []
-    for url in urls:
-        data = reader(url, constants.URL_TIMEOUT)
-        data: str = data.decode('utf-8')
-        result.extend(data.split("\n"))
-    result: List[str] = sorted(result, key=lambda elem:elem[1])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = {executor.submit(load_url, url, constants.URL_TIMEOUT): url for url in URLS}
+        for future in concurrent.futures.as_completed(futures):
+            data_b = future.result()
+            data: str = data_b.decode('utf-8')
+            result.extend(data.split("\n"))
+    result = sorted(result, key=lambda elem:elem[1])
     logger.info(f"Successfully read the files in {(time.time() - start_time) * 1000} ms")
     return result
 
