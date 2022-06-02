@@ -19,10 +19,7 @@ class Groups(models.Model):
 
 class Expenses(models.Model):
     description = models.CharField(max_length=constants.EXPENSES_DESCRIPTION_MAX_LENGTH)
-    total_amount = models.DecimalField(
-        max_digits=constants.EXPENSES_AMOUNT_MAX_DIGITS, 
-        decimal_places=constants.EXPENSES_AMOUNT_DECIMAL_PLACES
-    )
+    total_amount = models.DecimalField(max_digits=constants.EXPENSES_AMOUNT_MAX_DIGITS, decimal_places=constants.EXPENSES_AMOUNT_DECIMAL_PLACES)
     group = models.ForeignKey(Groups, null=True, on_delete=models.CASCADE)
     category = models.ForeignKey(Category, default=1, on_delete=models.CASCADE)
 
@@ -30,13 +27,12 @@ class Expenses(models.Model):
 class UserExpense(models.Model):
     expense = models.ForeignKey(Expenses, default=1, on_delete=models.CASCADE, related_name="users")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="expenses")
-    amount_owed = models.DecimalField(
-        max_digits=constants.USER_EXPENSE_AMOUNT_OWED_MAX_DIGITS, 
-        decimal_places=constants.USER_EXPENSE_AMOUNT_OWED_DECIMAL_PLACES
-    )
+    amount_owed = models.DecimalField( \
+        max_digits=constants.USER_EXPENSES_AMOUNT_OWED_MAX_DIGITS, \
+        decimal_places=constants.USER_EXPENSES_AMOUNT_OWED_MAX_DECIMAL_PLACES)
     amount_lent = models.DecimalField(
-        max_digits=constants.USER_EXPENSE_AMOUNT_LENT_MAX_DIGITS, 
-        decimal_places=constants.USER_EXPENSE_AMOUNT_LENT_DECIMAL_PLACES
+        max_digits=constants.USER_EXPENSES_AMOUNT_LENT_MAX_DIGITS, \
+        decimal_places=constants.USER_EXPENSES_AMOUNT_LENT_MAX_DECIMAL_PLACES\
     )
 
     def __str__(self):

@@ -18,27 +18,29 @@ from restapi.serializers import UserSerializer, GroupSerializer, CategorySeriali
 from restapi.custom_exception import UnauthorizedUserException
 
 from utils import normalize, sort_by_time_stamp, response_format, transform, aggregate, multi_threaded_reader
+from typing import Dict, List
 
-def index(_request):
+
+def index(_request: Request) -> HttpResponse:
     return HttpResponse("Hello, world. You're at Rest.")
 
 
 @api_view(['POST'])
-def logout(request):
+def logout(request: Request) -> Response:
     request.user.auth_token.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
-def balance(request):
-    user = request.user
+def balance(request) -> Response:
+    user: User = request.user
     expenses = Expenses.objects.filter(users__in=user.expenses.all())
-    final_balance = {}
+    final_balance: dict = {}
     for expense in expenses:
-        expense_balances = normalize(expense)
+        expense_balances: List = normalize(expense)
         for eb in expense_balances:
-            from_user = eb['from_user']
-            to_user = eb['to_user']
+            from_user: int = eb['from_user']
+            to_user: int = eb['to_user']
             if from_user == user.id:
                 final_balance[to_user] = final_balance.get(to_user, 0) - eb['amount']
             if to_user == user.id:
@@ -68,15 +70,15 @@ class GroupViewSet(ModelViewSet):
     serializer_class = GroupSerializer
 
     def get_queryset(self):
-        user = self.request.user
+        user: User = self.request.user
         groups = user.members.all()
         if self.request.query_params.get('q', None) is not None:
             groups = groups.filter(name__icontains=self.request.query_params.get('q', None))
         return groups
 
     def create(self, request, *args, **kwargs):
-        user = self.request.user
-        data = self.request.data
+        user: User = self.request.user
+        data: Dict = self.request.data
         group = Groups(**data)
         group.save()
         group.members.add(user)
@@ -88,7 +90,7 @@ class GroupViewSet(ModelViewSet):
         group = Groups.objects.get(id=pk)
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
-        body = request.data
+        body: Dict = request.data
         if body.get('add', None) is not None and body['add'].get('user_ids', None) is not None:
             added_ids = body['add']['user_ids']
             for user_id in added_ids:
@@ -110,21 +112,21 @@ class GroupViewSet(ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(methods=['get'], detail=True)
-    def balances(self, _request, pk=None):
+    def balances(self, _request, pk=None) -> Response:
         group = Groups.objects.get(id=pk)
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
         expenses = Expenses.objects.filter(group=group)
-        dues = {}
+        dues: Dict = {}
         for expense in expenses:
             user_balances = UserExpense.objects.filter(expense=expense)
             for user_balance in user_balances:
                 dues[user_balance.user] = dues.get(user_balance.user, 0) + user_balance.amount_lent \
                                           - user_balance.amount_owed
-        dues = [(k, v) for k, v in sorted(dues.items(), key=lambda item: item[1])]
-        start = 0
-        end = len(dues) - 1
-        balances = []
+        dues: List[Tuple] = [(k, v) for k, v in sorted(dues.items(), key=lambda item: item[1])]
+        start: int = 0
+        end: int = len(dues) - 1
+        balances: List = []
         while start < end:
             amount = min(abs(dues[start][1]), abs(dues[end][1]))
             amount = Decimal(amount).quantize(Decimal(10)**-2)
@@ -156,9 +158,9 @@ class ExpensesViewSet(ModelViewSet):
 @api_view(['post'])
 @authentication_classes([])
 @permission_classes([])
-def log_processor(request):
+def log_processor(request) -> Response:
     data = request.data
-    num_threads = data['parallelFileProcessingCount']
+    num_threads: int = data['parallelFileProcessingCount']
     log_files = data['logFiles']
     if num_threads <= 0 or num_threads > 30:
         return Response({"status": "failure", "reason": "Parallel Processing Count out of expected bounds"},
@@ -166,10 +168,10 @@ def log_processor(request):
     if len(log_files) == 0:
         return Response({"status": "failure", "reason": "No log files provided in request"},
                         status=status.HTTP_400_BAD_REQUEST)
-    logs = multi_threaded_reader(urls=data['logFiles'], num_threads=data['parallelFileProcessingCount'])
-    sorted_logs = sort_by_time_stamp(logs)
-    cleaned = transform(sorted_logs)
-    data = aggregate(cleaned)
-    response = response_format(data)
+    logs: List[str] = multi_threaded_reader(urls=data['logFiles'], num_threads=data['parallelFileProcessingCount'])
+    sorted_logs: List[List[str]] = sort_by_time_stamp(logs)
+    cleaned: List[List[str]] = transform(sorted_logs)
+    data: Dict[str, Dict[str, int]] = aggregate(cleaned)
+    response: List[Dict] = response_format(data)
     return Response({"response":response}, status=status.HTTP_200_OK)
 

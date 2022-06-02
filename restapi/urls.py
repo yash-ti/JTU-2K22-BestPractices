@@ -12,7 +12,7 @@ router.register('categories', CategoryViewSet)
 router.register('groups', GroupViewSet)
 router.register('expenses', ExpensesViewSet)
 
-urlpatterns = [
+urlpatterns: List[path] = [
     path('', index, name='index'),
     path('auth/logout/', logout),
     path('auth/login/', views.obtain_auth_token),

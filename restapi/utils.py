@@ -1,20 +1,21 @@
 import urllib.request
 from datetime import datetime
 import constants
+from typing import Dict, List, Tuple
 
-def normalize(expense):
+def normalize(expense) -> List:
     user_balances = expense.users.all()
-    dues = {}
+    dues: Dict = {}
     for user_balance in user_balances:
         dues[user_balance.user] = dues.get(user_balance.user, 0) + user_balance.amount_lent \
                                   - user_balance.amount_owed
-    dues = [(k, v) for k, v in sorted(dues.items(), key=lambda item: item[1])]
-    start = 0
-    end = len(dues) - 1
-    balances = []
+    dues: List[Tuple] = [(k, v) for k, v in sorted(dues.items(), key=lambda item: item[1])]
+    start: int = 0
+    end: int = len(dues) - 1
+    balances: List = []
     while start < end:
-        amount = min(abs(dues[start][1]), abs(dues[end][1]))
-        user_balance = {"from_user": dues[start][0].id, "to_user": dues[end][0].id, "amount": amount}
+        amount: float = min(abs(dues[start][1]), abs(dues[end][1]))
+        user_balance: Dict[str, float] = {"from_user": dues[start][0].id, "to_user": dues[end][0].id, "amount": amount}
         balances.append(user_balance)
         dues[start] = (dues[start][0], dues[start][1] + amount)
         dues[end] = (dues[end][0], dues[end][1] - amount)
@@ -25,28 +26,28 @@ def normalize(expense):
     return balances
 
 
-def sort_by_time_stamp(logs):
-    data = []
+def sort_by_time_stamp(logs: List[str]]) -> List[List[str]]:
+    data: List[List[str]] = []
     for log in logs:
         data.append(log.split(" "))
     # print(data)
     data = sorted(data, key=lambda elem: elem[1])
     return data
 
-def response_format(raw_data):
-    response = []
+def response_format(raw_data: Dict[str, Dict[str, int]]) -> List[Dict]:
+    response: List[Dict] = []
     for timestamp, data in raw_data.items():
-        entry = {'timestamp': timestamp}
-        logs = []
-        data = {k: data[k] for k in sorted(data.keys())}
+        entry: Dict = {'timestamp': timestamp}
+        logs: List = []
+        data: Dict[str, int] = {k: data[k] for k in sorted(data.keys())}
         for exception, count in data.items():
             logs.append({'exception': exception, 'count': count})
         entry['logs'] = logs
         response.append(entry)
     return response
 
-def aggregate(cleaned_logs):
-    data = {}
+def aggregate(cleaned_logs: List[List[str]]) -> Dict[str, Dict[str, int]]:
+    data: Dict[str, Dict[str, int]] = {}
     for log in cleaned_logs:
         [key, text] = log
         value = data.get(key, {})
@@ -55,14 +56,14 @@ def aggregate(cleaned_logs):
     return data
 
 
-def transform(logs):
-    result = []
+def transform(logs: List[List[str]]) -> List[List[str]]:
+    result: List[List[str]] = []
     for log in logs:
         [_, timestamp, text] = log
-        text = text.rstrip()
+        text: str = text.rstrip()
         timestamp = datetime.utcfromtimestamp(int(int(timestamp)/1000))
         hours, minutes = timestamp.hour, timestamp.minute
-        key = ''
+        key: str = ''
 
         if minutes >= 45:
             if hours == 23:
@@ -82,21 +83,21 @@ def transform(logs):
     return result
 
 
-def reader(url, timeout):
+def reader(url, timeout: int):
     with urllib.request.urlopen(url, timeout=timeout) as conn:
         return conn.read()
 
 
-def multi_threaded_reader(urls, num_threads):
+def multi_threaded_reader(urls, num_threads: int) -> List[str]:
     """
         Read multiple files through HTTP
     """
-    result = []
+    result: List[str] = []
     for url in urls:
         data = reader(url, constants.URL_TIMEOUT)
-        data = data.decode('utf-8')
+        data: str = data.decode('utf-8')
         result.extend(data.split("\n"))
-    result = sorted(result, key=lambda elem:elem[1])
+    result: List[str] = sorted(result, key=lambda elem:elem[1])
     return result
 
 

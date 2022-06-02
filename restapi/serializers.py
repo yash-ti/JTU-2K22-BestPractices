@@ -3,7 +3,7 @@ from rest_framework.serializers import ValidationError
 from django.contrib.auth.models import User
 
 from restapi.models import Category, Groups, UserExpense, Expenses
-
+from typing import Tuple, Dict, List
 
 class UserSerializer(ModelSerializer):
     def create(self, validated_data):
@@ -12,8 +12,8 @@ class UserSerializer(ModelSerializer):
 
     class Meta(object):
         model = User
-        fields = ('id', 'username', 'password')
-        extra_kwargs = {
+        fields: Tuple[str] = ('id', 'username', 'password')
+        extra_kwargs: Dict[str, Dict[str, bool]] = {
             'password': {'write_only': True}
         }
 
@@ -21,7 +21,7 @@ class UserSerializer(ModelSerializer):
 class CategorySerializer(ModelSerializer):
     class Meta(object):
         model = Category
-        fields = '__all__'
+        fields: str = '__all__'
 
 
 class GroupSerializer(ModelSerializer):
@@ -29,26 +29,26 @@ class GroupSerializer(ModelSerializer):
 
     class Meta(object):
         model = Groups
-        fields = '__all__'
+        fields: str = '__all__'
 
 
 class UserExpenseSerializer(ModelSerializer):
     class Meta(object):
         model = UserExpense
-        fields = ['user', 'amount_owed', 'amount_lent']
+        fields: List[str] = ['user', 'amount_owed', 'amount_lent']
 
 
 class ExpensesSerializer(ModelSerializer):
     users = UserExpenseSerializer(many=True, required=True)
 
-    def create(self, validated_data):
+    def create(self, validated_data: Dict):
         expense_users = validated_data.pop('users')
         expense = Expenses.objects.create(**validated_data)
         for eu in expense_users:
             UserExpense.objects.create(expense=expense, **eu)
         return expense
 
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data: Dict):
         user_expenses = validated_data.pop('users')
         instance.description = validated_data['description']
         instance.category = validated_data['category']
@@ -66,9 +66,9 @@ class ExpensesSerializer(ModelSerializer):
         instance.save()
         return instance
 
-    def validate(self, attrs):
+    def validate(self, attrs: Dict) -> Dict:
         # user = self.context['request'].user
-        user_ids = [user['user'].id for user in attrs['users']]
+        user_ids: List = [user['user'].id for user in attrs['users']]
         if len(set(user_ids)) != len(user_ids):
             raise ValidationError('Single user appears multiple times')
 
