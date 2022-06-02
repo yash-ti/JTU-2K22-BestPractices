@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from decimal import Decimal
-import pandas as pd
-import numpy as np
 
 from django.http import HttpResponse
 from django.contrib.auth.models import User
