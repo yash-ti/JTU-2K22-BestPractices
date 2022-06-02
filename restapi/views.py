@@ -9,14 +9,13 @@ from django.contrib.auth.models import User
 
 # Create your views here.
 from rest_framework.permissions import AllowAny
-from rest_framework.decorators import *
+from rest_framework.decorators import api_view, action, authentication_classes, permission_classes
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status
 
-from restapi.models import *
-from restapi.serializers import *
-from restapi.custom_exception import *
+from restapi.serializers import UserSerializer, GroupSerializer, CategorySerializer, ExpensesSerializer
+from restapi.custom_exception import UnauthorizedUserException
 
 from utils import normalize, sort_by_time_stamp, response_format, transform, aggregate, multi_threaded_reader
 
