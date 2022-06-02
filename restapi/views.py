@@ -31,14 +31,24 @@ def index(_request: Request) -> HttpResponse:
 def logout(request: Request) -> Response:
     """ Logs out the user, deletes auth token"""
     logger.info("Deleting auth token")
-    request.user.auth_token.delete()
+    try:
+        request.user.auth_token.delete()
+    except:
+        logger.error("Logout request failed")
+        return Response({"status": "failure", "reason": "Request is missing essential data"},
+                        status=status.HTTP_400_BAD_REQUEST)
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
 def balance(request) -> Response:
     """ Fetches the balance for the user"""
-    user: User = request.user
+    try:
+        user: User = request.user
+    except:
+        logger.error("Balance request is missing essential data")
+        return Response({"status": "failure", "reason": "Request is missing essential data"},
+                        status=status.HTTP_400_BAD_REQUEST)
     logger.info(f"Fetching balance for user: {user.id}")
     start_time: float = time.time()
     expenses = Expenses.objects.filter(users__in=user.expenses.all())
@@ -85,8 +95,13 @@ class GroupViewSet(ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """ Creates a group and adds user to it"""
-        user: User = self.request.user
-        data: Dict = self.request.data
+        try:
+            user: User = self.request.user
+            data: Dict = self.request.data
+        except:
+            logger.error("Error occurred while creating group")
+            return Response({"status": "failure", "reason": "Request is missing essential data"},
+                            status=status.HTTP_400_BAD_REQUEST)
         logger.info(f"Creating new group with user {user.id}")
         group = Groups(**data)
         group.save()
@@ -99,10 +114,15 @@ class GroupViewSet(ModelViewSet):
         """ Add/remove users from a group"""
         start_time: float = time.time()
         group = Groups.objects.get(id=pk)
-        logger.info(f"Removing users from group with id {pk}")
+        logger.info(f"Adding/Removing users from group with id {pk}")
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
-        body: Dict = request.data
+        try:
+            body: Dict = request.data
+        except:
+            logger.error("Failed to add/remove users to group")
+            return Response({"status": "failure", "reason": "Request is missing essential data"},
+                        status=status.HTTP_400_BAD_REQUEST)
         if body.get('add', None) is not None and body['add'].get('user_ids', None) is not None:
             added_ids = body['add']['user_ids']
             for user_id in added_ids:
@@ -182,9 +202,13 @@ def log_processor(request) -> Response:
     """ Processes the logs of the request"""
     logging.info("Processing logs")
     start_time: float = time.time()
-    data = request.data
-    num_threads: int = data['parallelFileProcessingCount']
-    log_files = data['logFiles']
+    try:
+        data = request.data
+        num_threads: int = data['parallelFileProcessingCount']
+        log_files = data['logFiles']
+    except:
+        return Response({"status": "failure", "reason": "Request is missing essential data"},
+                        status=status.HTTP_400_BAD_REQUEST)
     if num_threads <= 0 or num_threads > 30:
         return Response({"status": "failure", "reason": "Parallel Processing Count out of expected bounds"},
                         status=status.HTTP_400_BAD_REQUEST)
