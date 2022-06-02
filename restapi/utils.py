@@ -4,6 +4,7 @@ import constants
 from typing import Dict, List, Tuple
 
 def normalize(expense) -> List:
+    """Normalize the expenses"""
     user_balances = expense.users.all()
     dues: Dict = {}
     for user_balance in user_balances:
@@ -26,7 +27,10 @@ def normalize(expense) -> List:
     return balances
 
 
-def sort_by_time_stamp(logs: List[str]]) -> List[List[str]]:
+def sort_by_time_stamp(logs: List[str]) -> List[List[str]]:
+    """ Sorts logs by their timestamp
+        Returns a list of sorted logs.
+    """
     data: List[List[str]] = []
     for log in logs:
         data.append(log.split(" "))
@@ -35,6 +39,7 @@ def sort_by_time_stamp(logs: List[str]]) -> List[List[str]]:
     return data
 
 def response_format(raw_data: Dict[str, Dict[str, int]]) -> List[Dict]:
+    """ Converts the logs into an appropriate format for the response"""
     response: List[Dict] = []
     for timestamp, data in raw_data.items():
         entry: Dict = {'timestamp': timestamp}
@@ -47,6 +52,7 @@ def response_format(raw_data: Dict[str, Dict[str, int]]) -> List[Dict]:
     return response
 
 def aggregate(cleaned_logs: List[List[str]]) -> Dict[str, Dict[str, int]]:
+    """ Aggregates data from the cleaned logs, returns a dict"""
     data: Dict[str, Dict[str, int]] = {}
     for log in cleaned_logs:
         [key, text] = log
@@ -57,6 +63,7 @@ def aggregate(cleaned_logs: List[List[str]]) -> Dict[str, Dict[str, int]]:
 
 
 def transform(logs: List[List[str]]) -> List[List[str]]:
+    """ Transforms logs into [timestamp, text] form"""
     result: List[List[str]] = []
     for log in logs:
         [_, timestamp, text] = log
@@ -84,6 +91,7 @@ def transform(logs: List[List[str]]) -> List[List[str]]:
 
 
 def reader(url, timeout: int):
+    """ Reads data from a file through HTTP"""
     with urllib.request.urlopen(url, timeout=timeout) as conn:
         return conn.read()
 

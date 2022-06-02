@@ -22,17 +22,20 @@ from typing import Dict, List
 
 
 def index(_request: Request) -> HttpResponse:
+    """ View for the index page"""
     return HttpResponse("Hello, world. You're at Rest.")
 
 
 @api_view(['POST'])
 def logout(request: Request) -> Response:
+    """ Logs out the user"""
     request.user.auth_token.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
 def balance(request) -> Response:
+    """ Fetches the balance for the user"""
     user: User = request.user
     expenses = Expenses.objects.filter(users__in=user.expenses.all())
     final_balance: dict = {}
@@ -77,6 +80,7 @@ class GroupViewSet(ModelViewSet):
         return groups
 
     def create(self, request, *args, **kwargs):
+        """ Creates a group"""
         user: User = self.request.user
         data: Dict = self.request.data
         group = Groups(**data)
@@ -87,6 +91,7 @@ class GroupViewSet(ModelViewSet):
 
     @action(methods=['put'], detail=True)
     def members(self, request, pk=None):
+        """ Add/remove users from a group"""
         group = Groups.objects.get(id=pk)
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
@@ -104,6 +109,7 @@ class GroupViewSet(ModelViewSet):
 
     @action(methods=['get'], detail=True)
     def expenses(self, _request, pk=None):
+        """ Returns the expenses for a group"""
         group = Groups.objects.get(id=pk)
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
@@ -113,6 +119,7 @@ class GroupViewSet(ModelViewSet):
 
     @action(methods=['get'], detail=True)
     def balances(self, _request, pk=None) -> Response:
+        """ Returns the balance of a group"""
         group = Groups.objects.get(id=pk)
         if group not in self.get_queryset():
             raise UnauthorizedUserException()
@@ -159,6 +166,7 @@ class ExpensesViewSet(ModelViewSet):
 @authentication_classes([])
 @permission_classes([])
 def log_processor(request) -> Response:
+    """ Processes the logs of the request"""
     data = request.data
     num_threads: int = data['parallelFileProcessingCount']
     log_files = data['logFiles']

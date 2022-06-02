@@ -6,7 +6,12 @@ from restapi.models import Category, Groups, UserExpense, Expenses
 from typing import Tuple, Dict, List
 
 class UserSerializer(ModelSerializer):
-    def create(self, validated_data):
+    """ Serializer class for a user.
+    """
+    def create(self, validated_data) -> User:
+        """ Creates a user from the validated data.
+        Returns the created user.
+        """
         user = User.objects.create_user(**validated_data)
         return user
 
@@ -19,12 +24,14 @@ class UserSerializer(ModelSerializer):
 
 
 class CategorySerializer(ModelSerializer):
+    """ Serializer for a category"""
     class Meta(object):
         model = Category
         fields: str = '__all__'
 
 
 class GroupSerializer(ModelSerializer):
+    """ Serializer for a group"""
     members = UserSerializer(many=True, required=False)
 
     class Meta(object):
@@ -33,15 +40,20 @@ class GroupSerializer(ModelSerializer):
 
 
 class UserExpenseSerializer(ModelSerializer):
+    """ Serializer for a user expense"""
     class Meta(object):
         model = UserExpense
         fields: List[str] = ['user', 'amount_owed', 'amount_lent']
 
 
 class ExpensesSerializer(ModelSerializer):
+    """" Serializer for expenses"""
     users = UserExpenseSerializer(many=True, required=True)
 
     def create(self, validated_data: Dict):
+        """ Creates an expense from the validated data, and
+        creates all the users who have this as an expense
+        """
         expense_users = validated_data.pop('users')
         expense = Expenses.objects.create(**validated_data)
         for eu in expense_users:
@@ -49,6 +61,10 @@ class ExpensesSerializer(ModelSerializer):
         return expense
 
     def update(self, instance, validated_data: Dict):
+        """ Update the values in instance using validated data.
+        If validated_data contains users, all the previous users with
+        this expense are deleted and new Users are created.
+        """
         user_expenses = validated_data.pop('users')
         instance.description = validated_data['description']
         instance.category = validated_data['category']
@@ -67,6 +83,7 @@ class ExpensesSerializer(ModelSerializer):
         return instance
 
     def validate(self, attrs: Dict) -> Dict:
+        """ Validates the user data, checks if a user does not occur multiple times"""
         # user = self.context['request'].user
         user_ids: List = [user['user'].id for user in attrs['users']]
         if len(set(user_ids)) != len(user_ids):
